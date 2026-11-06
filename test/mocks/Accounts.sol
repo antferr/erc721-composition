@@ -188,3 +188,30 @@ contract UpgradeableAccountProxy is Proxy {
         if (implementation == address(0)) implementation = initialImplementation;
     }
 }
+
+/// @dev The same pattern for a token contract: a token behind an ERC-1967 proxy keeps its address
+///      and the code at that address across an upgrade, while the logic that answers `burnedBy`
+///      changes. Generic, written for the tests.
+contract UpgradeableTokenProxy is Proxy {
+    address public immutable admin;
+    address public immutable initialImplementation;
+
+    constructor(address admin_, address initialImplementation_) {
+        admin = admin_;
+        initialImplementation = initialImplementation_;
+    }
+
+    receive() external payable {
+        _fallback();
+    }
+
+    function upgradeTo(address newImplementation) external {
+        require(msg.sender == admin, "not admin");
+        ERC1967Utils.upgradeToAndCall(newImplementation, "");
+    }
+
+    function _implementation() internal view override returns (address implementation) {
+        implementation = ERC1967Utils.getImplementation();
+        if (implementation == address(0)) implementation = initialImplementation;
+    }
+}

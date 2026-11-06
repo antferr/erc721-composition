@@ -53,7 +53,7 @@ interface IERC721Composition /* is IERC721, IERC721BurnRecord, IERC165 */ {
 
 ## Rules in brief
 
-The normative text will be the Specification of the ERC. These are the rules published in the discussion thread, numbered as there; the last three come from its third post.
+The normative text will be the Specification of the ERC. These are the rules published in the discussion thread, numbered as there: rules 10 to 12 come from its third post, rule 13 from a later reply.
 
 1. **Locked until the burn.** While the token exists, the container does not execute, approve or validate anything that moves its assets out; after the burn, only the address returned by `burnedBy` can move them. The rule cannot be changed later, and on any other chain the container validates nothing.
 2. **ERC-6551 accounts:** before the burn, `isValidSigner` and `isValidSignature` never return their magic values; after the burn, they do only for the burner.
@@ -67,6 +67,7 @@ The normative text will be the Specification of the ERC. These are the rules pub
 10. **Already a contract.** When the minting transaction ends, the container is a contract, so a reader can run its checks straight away.
 11. **No upgrades.** For an ERC-6551 account, the implementation in `accountData` is the code that runs behind the registry's proxy, and it is neither upgradeable nor delegating.
 12. **No token of the collection goes into a container the collection has declared,** its own or another token's, live or burned, by transfer or by mint. Within the collection this rules out every ownership cycle: a token inside another token's container is always older than that token.
+13. **No upgrades for the token contract either.** It is neither upgradeable nor delegating its logic to code that can change: the container opens for whoever `burnedBy` names, and an upgrade could also move a token before an honest burn, mint a burned id again or rewrite a composition.
 
 Where each fact is read, as published in the thread:
 
@@ -77,11 +78,11 @@ Where each fact is read, as published in the thread:
 | Owner when the token was burned | `burnedBy` (ERC-8423) | `Transfer` to the zero address | Only the burn, once |
 | What the container holds now | The constituents: `balanceOf`, or the native balance | Nothing in this extension | Later deposits, actions by a constituent's issuer, withdrawals after the burn |
 
-The comment on each test starts with its identifier and the rules it checks: P1 to P12 are the rules above, FT1 to FT4 the rows of this table, I1 to I4 the interface (identifier, constituent, container data, event), and BR2, BR4, BR5 and BR7 the rules with the same number in the specification of ERC-8423.
+The comment on each test starts with its identifier and the rules it checks: P1 to P13 are the rules above, FT1 to FT4 the rows of this table, I1 to I4 the interface (identifier, constituent, container data, event), and BR2, BR4, BR5 and BR7 the rules with the same number in the specification of ERC-8423.
 
 ## What a reader still has to check
 
-The two functions tell a reader which container holds the assets and which code governs it; they cannot tell whether that code really keeps the assets in. A reader recognises two pieces of code: the container's, and the token contract's, because the container opens for whoever `burnedBy` names. `src/examples/CompositionReader.sol` does this for both container types without knowing the collection, and `test/Reader.t.sol` shows it turning away an ordinary account the holder can empty, an account behind an upgradeable proxy, a token contract with a rigged `burnedBy`, a container that belongs to another token, and hostile contracts that return enormous or malformed answers.
+The two functions tell a reader which container holds the assets and which code governs it; they cannot tell whether that code really keeps the assets in. A reader recognises two pieces of code: the container's, and the token contract's, because the container opens for whoever `burnedBy` names. `src/examples/CompositionReader.sol` does this for both container types without knowing the collection, and `test/Reader.t.sol` shows it turning away an ordinary account the holder can empty, an account behind an upgradeable proxy, a token contract with a rigged `burnedBy`, a token contract behind an upgradeable proxy, a container that belongs to another token, and hostile contracts that return enormous or malformed answers.
 
 So the declared composition is a lower bound a reader can check under these conditions, not a statement about what the token is worth. Even with both pieces of code recognised, the balance of a constituent can fall below the declared amount without any action of the container, if its issuer can rebase it down, freeze it or seize it: the reader compares the current balances with the declared amounts and says so.
 
@@ -92,6 +93,7 @@ So the declared composition is a lower bound a reader can check under these cond
 - Cycles that pass through other accounts of the same tokens, or through another collection, are not prevented (`test/Cycles.t.sol`).
 - Assets sent to the address of a container before its token is minted become surplus, locked with the rest and released to the burner (`test_PrefundedAddress_BecomesSurplus`).
 - An account behind an upgradeable proxy keeps its address, its code and its declared data while becoming withdrawable: only recognising the implementation itself rules it out (`test_Reader_RejectsUpgradeableProxyAccount`).
+- The same holds for the token contract: behind an upgradeable proxy, an upgrade of the token alone can rewrite `burnedBy` and open the container without a burn, while address, code and declared container stay the same (`test_Reader_RejectsUpgradeableTokenContract`).
 
 ## Building a collection
 

@@ -7,7 +7,7 @@ import {CustomContainerCompositionToken} from "../src/CustomContainerComposition
 import {LockedContainer} from "../src/LockedContainer.sol";
 import {CompositionReader} from "../src/examples/CompositionReader.sol";
 import {IERC6551Account, IERC6551Executable, IERC6551Registry} from "../src/interfaces/IERC6551.sol";
-import {ExampleERC6551Account, UpgradeableAccountProxy} from "./mocks/Accounts.sol";
+import {ExampleERC6551Account, UpgradeableAccountProxy, UpgradeableTokenProxy} from "./mocks/Accounts.sol";
 import {PlainERC721, HostileCompositionContract} from "./mocks/Misc.sol";
 import {RebasingDownERC20, IssuerControlledERC20} from "./mocks/Tokens.sol";
 import {BackdooredCompositionToken, ForeignContainerToken, ForeignCustomContainerToken} from "./mocks/Defects.sol";
@@ -15,6 +15,14 @@ import {Intermediary} from "./mocks/Holders.sol";
 import {Variant, Variant6551, VariantCustom, ICompositionToken} from "./utils/Variant.sol";
 import {CompositionChecks} from "./spec/Checks.sol";
 import {Base} from "./Base.t.sol";
+
+interface IERC721BurnRecordView {
+    function burnedBy(uint256 tokenId) external view returns (address);
+}
+
+interface IERC721OwnerView {
+    function ownerOf(uint256 tokenId) external view returns (address);
+}
 
 /// @dev Builds readers that recognize a given set of code.
 abstract contract ReaderFactory is Base {
@@ -175,6 +183,52 @@ contract ReaderTest is ReaderFactory {
         IERC6551Executable(payable(account)).execute(bob, 1 ether, "", 0);
         assertEq(account.balance, 0);
         assertEq(backdoored.ownerOf(tokenId), alice);
+    }
+
+    /// E5b · P1, P13, BR4. The token contract behind an upgradeable proxy, with an immutable container
+    ///     implementation: an upgrade of the token alone changes what `burnedBy` answers, and the
+    ///     container releases its assets without a burn. Address and code stay the same, so only a
+    ///     reader that recognises the token's logic itself, not the proxy, rejects it.
+    function test_Reader_RejectsUpgradeableTokenContract() public {
+        address admin = makeAddr("token administrator");
+        CompositionToken logic = new CompositionToken(address(implementation));
+        UpgradeableTokenProxy proxy = new UpgradeableTokenProxy(admin, address(logic));
+        address collection = address(proxy);
+        uint256 tokenId = _mintOn(collection, _three(1 ether, 10e18, 20e18));
+        address account = _accountOf(collection, tokenId);
+
+        CompositionReader reader = _reader(_list(address(logic)), _list(address(implementation)));
+        CompositionReader naive = _reader(_list(collection), _list(address(implementation)));
+        assertEq(
+            uint8(reader.verify(collection, tokenId)),
+            uint8(CompositionReader.Verdict.UnrecognizedTokenContract),
+            "rejected from the start"
+        );
+        assertEq(uint8(naive.verify(collection, tokenId)), uint8(CompositionReader.Verdict.Verified));
+
+        // before the upgrade the container is locked like any other
+        assertEq(IERC721BurnRecordView(collection).burnedBy(tokenId), address(0));
+        vm.prank(bob);
+        vm.expectRevert();
+        IERC6551Executable(payable(account)).execute(bob, 1 ether, "", 0);
+
+        bytes32 codeBefore = collection.codehash;
+        // created before the prank: a creation inside the call's arguments would consume it
+        address rigged = address(new BackdooredCompositionToken(address(implementation), bob));
+        vm.prank(admin);
+        proxy.upgradeTo(rigged);
+
+        // same address, same code at the address, same declared container, same verdict
+        assertEq(collection.codehash, codeBefore);
+        assertEq(_accountOf(collection, tokenId), account);
+        assertEq(uint8(naive.verify(collection, tokenId)), uint8(CompositionReader.Verdict.Verified));
+
+        // the token was never burned, and the container obeys the new burnedBy
+        assertEq(IERC721BurnRecordView(collection).burnedBy(tokenId), bob);
+        vm.prank(bob);
+        IERC6551Executable(payable(account)).execute(bob, 1 ether, "", 0);
+        assertEq(account.balance, 0);
+        assertEq(IERC721OwnerView(collection).ownerOf(tokenId), alice, "no burn happened");
     }
 
     /// E7 · P9, FT4
