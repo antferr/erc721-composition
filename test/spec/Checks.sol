@@ -9,7 +9,7 @@ import {IERC721Composition} from "../../src/IERC721Composition.sol";
 import {ERC721Composition} from "../../src/ERC721Composition.sol";
 import {IERC6551Account} from "../../src/interfaces/IERC6551.sol";
 import {FeeOnTransferERC20, SignatureTransferERC20} from "../mocks/Tokens.sol";
-import {Holder} from "../mocks/Holders.sol";
+import {Holder, MintCallbackReceiver} from "../mocks/Holders.sol";
 import {Variant, ICompositionToken, IForceMint} from "../utils/Variant.sol";
 
 /// @dev The checks of the specification tests, written to return an outcome instead of stopping
@@ -78,6 +78,15 @@ abstract contract CompositionChecks is Variant {
             if (_balance(c[i].asset, account) < c[i].amount) return false;
         }
         return true;
+    }
+
+    /// @dev Mints to a contract that looks at the token from inside `onERC721Received`: the
+    ///      lower bound and the container must already be in place when the token can first
+    ///      be seen, not only when the minting transaction ends.
+    function _checkBackedWhenReceived() internal returns (bool) {
+        MintCallbackReceiver receiver = new MintCallbackReceiver(_isERC6551(), false);
+        _mint(alice, address(receiver), _three(1 ether, 10e18, 20e18));
+        return receiver.sawBackedToken();
     }
 
     /// @dev A constituent that keeps a fee on every transfer: either the mint fails, or the

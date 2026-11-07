@@ -235,6 +235,18 @@ abstract contract MinimalCompositionToken is ERC721, ERC721Burnable, ERC721BurnR
         emit CompositionDeclared(
             tokenId, account, 0x6faff5f1, abi.encode(ACCOUNT_IMPLEMENTATION, bytes32(0)), constituents
         );
+        _fundAndMint(to, tokenId, account, constituents);
+    }
+
+    function _fundAndMint(address to, uint256 tokenId, address account, Constituent[] calldata constituents)
+        internal
+        virtual
+    {
+        _fund(account, constituents);
+        _safeMint(to, tokenId);
+    }
+
+    function _fund(address account, Constituent[] calldata constituents) internal {
         for (uint256 i; i < constituents.length; ++i) {
             if (constituents[i].asset == NATIVE_ASSET) {
                 (bool ok,) = account.call{value: constituents[i].amount}("");
@@ -243,7 +255,6 @@ abstract contract MinimalCompositionToken is ERC721, ERC721Burnable, ERC721BurnR
                 IERC20(constituents[i].asset).safeTransferFrom(msg.sender, account, constituents[i].amount);
             }
         }
-        _safeMint(to, tokenId);
     }
 
     function compositionOf(uint256 tokenId) external view returns (Constituent[] memory) {
@@ -288,6 +299,26 @@ contract UnmeasuredMintToken is MinimalCompositionToken {
 
     function _container(uint256 tokenId) internal override returns (address) {
         return ERC6551_REGISTRY.createAccount(ACCOUNT_IMPLEMENTATION, bytes32(0), block.chainid, address(this), tokenId);
+    }
+}
+
+/// @dev Defect X14: the token is minted first and its container funded afterwards, in the same
+///      transaction. At the end of the transaction the container holds the declared amounts,
+///      so a lower bound checked only then is met; a recipient that looks at the token in
+///      `onERC721Received` finds the container empty.
+contract MintBeforeFundToken is MinimalCompositionToken {
+    constructor(address accountImplementation) MinimalCompositionToken(accountImplementation) {}
+
+    function _container(uint256 tokenId) internal override returns (address) {
+        return ERC6551_REGISTRY.createAccount(ACCOUNT_IMPLEMENTATION, bytes32(0), block.chainid, address(this), tokenId);
+    }
+
+    function _fundAndMint(address to, uint256 tokenId, address account, Constituent[] calldata constituents)
+        internal
+        override
+    {
+        _safeMint(to, tokenId);
+        _fund(account, constituents);
     }
 }
 

@@ -22,7 +22,8 @@ import {
     OwnContainerOnlyToken,
     SharedContainerToken,
     LazyContainerToken,
-    UnmeasuredMintToken
+    UnmeasuredMintToken,
+    MintBeforeFundToken
 } from "./mocks/Defects.sol";
 import {Variant, Variant6551} from "./utils/Variant.sol";
 import {CompositionChecks} from "./spec/Checks.sol";
@@ -222,6 +223,17 @@ contract DefectsTest is CompositionChecks, Variant6551 {
         fee.approve(address(token), type(uint256).max);
         uint256 tokenId = _mint(alice, alice, _one(address(fee), 10e18));
         assertFalse(_checkLowerBound(tokenId), "A4 sees it");
+    }
+
+    /// X14 · A13, A4. The token is minted before its container is funded. The lower bound
+    ///     read when the minting transaction ends is met; the one a recipient reads in
+    ///     `onERC721Received` is not.
+    function test_Defect_X14_MintBeforeFund() public {
+        assertTrue(_checkBackedWhenReceived(), "control");
+        _useToken(address(new MintBeforeFundToken(address(implementation))));
+        assertFalse(_checkBackedWhenReceived(), "A13 sees it");
+        uint256 tokenId = _mintThree(alice);
+        assertTrue(_checkLowerBound(tokenId), "a check at the end of the transaction does not");
     }
 
     /// X13 · C10. The account does not check the chain id.

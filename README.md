@@ -53,18 +53,18 @@ interface IERC721Composition /* is IERC721, IERC721BurnRecord, IERC165 */ {
 
 ## Rules in brief
 
-The normative text will be the Specification of the ERC. These are the rules published in the discussion thread, numbered as there: rules 10 to 12 come from its third post, rule 13 from a later reply.
+The normative text will be the Specification of the ERC. These are the rules published in the discussion thread, numbered as there: rules 10 to 12 come from its third post, rule 13 from a later reply, and rules 5 and 10 were made precise about timing after another.
 
 1. **Locked until the burn.** While the token exists, the container does not execute, approve or validate anything that moves its assets out; after the burn, only the address returned by `burnedBy` can move them. The rule cannot be changed later, and on any other chain the container validates nothing.
 2. **ERC-6551 accounts:** before the burn, `isValidSigner` and `isValidSignature` never return their magic values; after the burn, they do only for the burner.
 3. **One container per token,** used by no other token.
 4. **Fixed at mint.** Composition and container never change, not even after the burn.
-5. **A lower bound.** When the minting transaction ends, the container holds at least each declared amount, and no declared amount exceeds what the container actually received. Anything sent later is surplus: it stays inside and leaves with the rest after the burn.
+5. **A lower bound, in place before the token exists.** A token is minted only once its container holds at least each declared amount, and no declared amount exceeds what the container actually received, so whoever receives the token, through `onERC721Received` or otherwise, finds them already there. Anything sent later is surplus: it stays inside and leaves with the rest after the burn, which can come within the minting transaction itself.
 6. **One event per token,** at mint, batch mints included, with the same data the two functions return.
 7. **No re-minting** of a burned id, so the recorded burner of a token never changes.
 8. **No reverts.** Both functions answer for any id. An empty composition means "not declared", never "declared as zero"; after the burn they return the same values as before.
 9. **Constituents** are the native asset and ERC-20 tokens, each at most once, sorted by address, with amounts above zero. Tokens whose balance can drop without a transfer by the holder should not be declared: no container can protect their lower bound.
-10. **Already a contract.** When the minting transaction ends, the container is a contract, so a reader can run its checks straight away.
+10. **Already a contract.** Before the token is minted, its container is a contract, so a reader can run its checks as soon as the token exists.
 11. **No upgrades.** For an ERC-6551 account, the implementation in `accountData` is the code that runs behind the registry's proxy, and it is neither upgradeable nor delegating.
 12. **No token of the collection goes into a container the collection has declared,** its own or another token's, live or burned, by transfer or by mint. Within the collection this rules out every ownership cycle: a token inside another token's container is always older than that token.
 13. **No upgrades for the token contract either.** It is neither upgradeable nor delegating its logic to code that can change: the container opens for whoever `burnedBy` names, and an upgrade could also move a token before an honest burn, mint a burned id again or rewrite a composition.
@@ -97,7 +97,7 @@ So the declared composition is a lower bound a reader can check under these cond
 
 ## Building a collection
 
-Inherit `ERC721Composition`, call `_declareComposition` for every token in the transaction that mints it, before any untrusted external call, and implement `_accountTypeAndData`. `ERC721CompositionMint` is an example minting flow in which whoever mints supplies the constituents. `CompositionToken` and `CustomContainerCompositionToken` are complete collections for the two container types, and `ConsecutiveCompositionToken` mints in batch during construction.
+Inherit `ERC721Composition` and implement `_accountTypeAndData`. For every token, in the transaction that mints it: create the container, call `_declareComposition` before any untrusted external call, move the constituents into the container, and only then mint the token. `ERC721CompositionMint` is an example minting flow in which whoever mints supplies the constituents. `CompositionToken` and `CustomContainerCompositionToken` are complete collections for the two container types, and `ConsecutiveCompositionToken` mints in batch during construction.
 
 ## Layout
 
@@ -120,7 +120,7 @@ Inherit `ERC721Composition`, call `_declareComposition` for every token in the t
 | `test/Reader.t.sol` | The example reader against correct and defective collections |
 | `test/Gas.t.sol` | Cost |
 | `test/invariant/` | Random sequences, checked after every step against a model built from the operations |
-| `test/Defects.t.sol` | Thirteen defects introduced on purpose, each caught by the checks of the specification tests |
+| `test/Defects.t.sol` | Fourteen defects introduced on purpose, each caught by the checks of the specification tests |
 | `test/mocks/` | Test tokens and accounts, and the defective contracts |
 | `test/data/` | Deployment data of the ERC-6551 registry, copied from the ERC text: the tests run against the real registry code at its canonical address |
 | `.github/workflows/test.yml` | Continuous integration: format check, build and tests |

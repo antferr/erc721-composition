@@ -10,7 +10,9 @@ import {ERC721Composition} from "./ERC721Composition.sol";
 ///         {mint} supplies the constituents; the token goes to `to`.
 /// @dev Order of operations: container creation (trusted code), declaration (state and
 ///      event), asset transfers (untrusted code), then the ERC-721 mint. Each transfer is
-///      measured on the container, so the declared amount never exceeds what was received.
+///      measured on the container, so the declared amount never exceeds what was received,
+///      and the token exists only once its container holds the declared amounts: a recipient
+///      that inspects it in `onERC721Received` already finds them there.
 abstract contract ERC721CompositionMint is ERC721Composition {
     using SafeERC20 for IERC20;
 

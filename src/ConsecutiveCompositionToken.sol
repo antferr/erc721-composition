@@ -11,8 +11,8 @@ import {IERC6551Registry} from "./interfaces/IERC6551.sol";
 /// @notice ERC-721 lets a contract create tokens during construction without a `Transfer`
 ///         event for each one; OpenZeppelin's batch mint emits a single ERC-2309
 ///         `ConsecutiveTransfer` instead. The composition event must still arrive once per id,
-///         every container must be a contract when construction ends, and the receiver of the
-///         batch must not be one of the declared containers.
+///         every container must be a funded contract before the batch is minted, and the
+///         receiver of the batch must not be one of the declared containers.
 contract ConsecutiveCompositionToken is ERC721, ERC721Consecutive, ERC721Burnable, ERC721Composition {
     IERC6551Registry public constant ERC6551_REGISTRY = IERC6551Registry(0x000000006551c19487814612e58FE06813775758);
     bytes4 public constant ERC6551_ACCOUNT_INTERFACE_ID = 0x6faff5f1;
@@ -36,7 +36,8 @@ contract ConsecutiveCompositionToken is ERC721, ERC721Consecutive, ERC721Burnabl
             revert NativeAmountMismatch(nativePerToken * batchSize, msg.value);
         }
 
-        uint256 first = _mintConsecutive(receiver, batchSize);
+        // containers are created, declared and funded before the batch exists, as for any mint
+        uint256 first = _firstConsecutiveId();
         Constituent[] memory constituents = new Constituent[](1);
         constituents[0] = Constituent(NATIVE_ASSET, nativePerToken);
 
@@ -53,6 +54,7 @@ contract ConsecutiveCompositionToken is ERC721, ERC721Consecutive, ERC721Burnabl
         // the batch bypasses {_update}: the receiver is checked here, against every container
         (bool declared, uint256 containerTokenId) = _containerToken(receiver);
         if (declared) revert TransferToDeclaredContainer(first, containerTokenId);
+        _mintConsecutive(receiver, batchSize);
     }
 
     function _accountTypeAndData(uint256) internal view override returns (bytes4, bytes memory) {

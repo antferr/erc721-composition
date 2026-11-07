@@ -8,7 +8,7 @@ import {IERC721Composition} from "../../src/IERC721Composition.sol";
 import {ERC721Composition} from "../../src/ERC721Composition.sol";
 import {ERC721CompositionMint} from "../../src/ERC721CompositionMint.sol";
 import {IERC6551Account, IERC6551Executable} from "../../src/interfaces/IERC6551.sol";
-import {Holder} from "../mocks/Holders.sol";
+import {Holder, MintCallbackReceiver} from "../mocks/Holders.sol";
 import {IForceMint} from "../utils/Variant.sol";
 import {CompositionChecks} from "./Checks.sol";
 
@@ -58,6 +58,34 @@ abstract contract CompositionSpec is CompositionChecks {
         uint256 tokenId = _mintThree(alice);
         assertTrue(_checkLowerBound(tokenId));
         assertTrue(_checkConformance(tokenId));
+    }
+
+    /// A13 · P5, P10. A contract that receives the token through `onERC721Received` already
+    ///     finds it declared, its container a contract and the declared amounts inside: the
+    ///     lower bound holds from the moment the token can be seen.
+    function test_MintCallback_SeesBackedToken() public {
+        assertTrue(_checkBackedWhenReceived());
+    }
+
+    /// A14 · P1, P5, P7, BR4. The recipient checks the backing, then burns the token and
+    ///     empties the container inside `onERC721Received`. The minting transaction ends below
+    ///     the declared amounts: that is release after the burn, not a broken lower bound.
+    function test_MintCallback_BurnAndWithdrawDuringMint() public {
+        MintCallbackReceiver receiver = new MintCallbackReceiver(_isERC6551(), true);
+        IERC721Composition.Constituent[] memory declared = _three(1 ether, 10e18, 20e18);
+        uint256 tokenId = _mint(alice, address(receiver), declared);
+        address account = _containerOf(tokenId);
+
+        assertTrue(receiver.sawBackedToken(), "backed when first seen");
+        assertEq(token.burnedBy(tokenId), address(receiver), "burned by the recipient");
+        vm.expectRevert();
+        token.ownerOf(tokenId);
+        for (uint256 i; i < declared.length; ++i) {
+            assertEq(_balance(declared[i].asset, account), 0, "container emptied");
+            assertEq(_balance(declared[i].asset, address(receiver)), declared[i].amount, "released to the burner");
+        }
+        assertEq(abi.encode(token.compositionOf(tokenId)), abi.encode(declared), "declaration unchanged");
+        assertTrue(_checkViewsAnswer(tokenId));
     }
 
     /// A5 · P8, I3

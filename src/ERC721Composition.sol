@@ -89,7 +89,7 @@ abstract contract ERC721Composition is ERC721BurnRecord, IERC721Composition {
     ///      for no other token, and that the constituents are non-empty, sorted by strictly
     ///      increasing asset address (so neither duplicates nor the zero address can appear)
     ///      and with non-zero amounts. The caller ensures that the container holds at least
-    ///      the declared amounts by the end of the minting transaction.
+    ///      the declared amounts before the token is minted.
     function _declareComposition(uint256 tokenId, address account, Constituent[] memory constituents) internal virtual {
         if (_declarations[tokenId].account != address(0)) revert CompositionAlreadyDeclared(tokenId);
         if (account == address(0) || account.code.length == 0) revert InvalidAccount(account);
