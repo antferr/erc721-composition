@@ -165,7 +165,7 @@ A custom container costs a contract creation per token. The check on transfers a
 
 ## Status
 
-Proposal under discussion, without a number. The interface is the one published in the discussion thread; it may still change while the proposal is a draft, and this repository will follow it.
+Proposal submitted as pull request. The interface is the one published in the discussion thread; it may still change while the proposal is a draft, and this repository will follow it.
 
 ## License
 
