@@ -4,7 +4,7 @@
 
 Reference implementation and tests for a proposed ERC-721 extension for tokens that hold assets in a container of their own: nothing leaves the container while the token exists, any contract can read what the token was minted with, and after the burn only the address recorded by ERC-8423 can take the assets out.
 
-The proposal is under discussion and has no number yet. Feedback on the semantics belongs in the discussion thread:
+Proposal submitted as pull request https://github.com/ethereum/ERCs/pull/2220, waiting for a number. Feedback on the semantics belongs in the discussion thread:
 https://ethereum-magicians.org/t/erc-721-composition-extension/30181
 
 It builds on ERC-8423, published as a Draft at https://eips.ethereum.org/EIPS/eip-8423, whose reference implementation is in https://github.com/antferr/erc721-burn-record.
