@@ -1,11 +1,11 @@
-# ERC-721 Composition Extension: reference implementation and tests
+# ERC-8520: ERC-721 Composition Extension, reference implementation and tests
 
 [![CI](https://github.com/antferr/erc721-composition/actions/workflows/test.yml/badge.svg)](https://github.com/antferr/erc721-composition/actions/workflows/test.yml)
 
 Reference implementation and tests for a proposed ERC-721 extension for tokens that hold assets in a container of their own: nothing leaves the container while the token exists, any contract can read what the token was minted with, and after the burn only the address recorded by ERC-8423 can take the assets out.
 
-Proposal submitted as pull request https://github.com/ethereum/ERCs/pull/2220, waiting for a number. Feedback on the semantics belongs in the discussion thread:
-https://ethereum-magicians.org/t/erc-721-composition-extension/30181
+Proposal submitted as pull request https://github.com/ethereum/ERCs/pull/2220 and assigned the number ERC-8520; the pull request is not merged yet. Feedback on the semantics belongs in the discussion thread:
+https://ethereum-magicians.org/t/erc-8520-erc-721-composition-extension/30181
 
 It builds on ERC-8423, published as a Draft at https://eips.ethereum.org/EIPS/eip-8423, whose reference implementation is in https://github.com/antferr/erc721-burn-record.
 
@@ -165,7 +165,7 @@ A custom container costs a contract creation per token. The check on transfers a
 
 ## Status
 
-Proposal submitted as pull request. The interface is the one published in the discussion thread; it may still change while the proposal is a draft, and this repository will follow it.
+Proposal submitted as pull request and assigned the number ERC-8520, not merged yet. The interface is the one published in the discussion thread; it may still change while the proposal is a draft, and this repository will follow it.
 
 ## License
 
