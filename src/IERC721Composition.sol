@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.24;
 
-/// @title ERC-721 composition extension (draft interface)
+/// @title ERC-8520 interface: ERC-721 composition extension
 /// @notice Every conforming token holds its constituents in a container dedicated to that
 ///         token. While the token exists nothing leaves the container; after the burn only
 ///         the address returned by `burnedBy` (ERC-8423) can move the assets out. The

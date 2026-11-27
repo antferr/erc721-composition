@@ -21,7 +21,7 @@ import {IERC721Composition} from "./IERC721Composition.sol";
 ///      Minting stays with the inheriting contract, which MUST call {_declareComposition} for
 ///      every token it creates, in the same transaction and before any untrusted external call.
 ///      Tokens minted through {_update} are rejected unless declared. Tokens minted in batch
-///      during construction (ERC-721 Consecutive) bypass {_update}: the inheriting contract
+///      during construction and announced under ERC-2309 bypass {_update}: the inheriting contract
 ///      declares them one by one and checks the receiver with {_containerToken}.
 abstract contract ERC721Composition is ERC721BurnRecord, IERC721Composition {
     /// @dev Container and number of constituents of a declared token, packed in one slot.

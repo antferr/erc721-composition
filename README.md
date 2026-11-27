@@ -132,7 +132,7 @@ Requires [Foundry](https://getfoundry.sh). The dependencies are not vendored: in
 ```sh
 git clone https://github.com/antferr/erc721-composition
 cd erc721-composition
-forge install foundry-rs/forge-std@v1.16.2 OpenZeppelin/openzeppelin-contracts@v5.7.0 antferr/erc721-burn-record@465f74f966bb56b6812e97f9c8356fba0e63f2d9
+forge install foundry-rs/forge-std@v1.16.2 OpenZeppelin/openzeppelin-contracts@v5.7.0 antferr/erc721-burn-record@v0.1.0
 forge test
 ```
 
